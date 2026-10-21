@@ -1,0 +1,604 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4bfddd4..53e693a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -95,6 +95,8 @@ add_executable(magicpodscore
+     src/device/capabilities/pbp/PixelBudsAncCapability.cpp
+     src/device/capabilities/pbp/PixelBudsBatteryCapability.cpp
+ 
++    src/device/capabilities/nothing/NothingCapabilities.cpp
++
+     src/device/capabilities/bhf/BhfBatteryCapability.cpp
+     src/device/capabilities/cmn/CmnBluetoothCodecCapability.cpp
+ 
+@@ -103,6 +105,7 @@ add_executable(magicpodscore
+     src/device/GalaxyBudsDevice.cpp
+     src/device/PixelBudsDevice.cpp
+     src/device/BhfDevice.cpp
++    src/device/NothingDevice.cpp
+     src/device/DeviceBattery.cpp
+     src/device/Device.cpp
+ 
+diff --git a/src/DevicesInfoFetcher.cpp b/src/DevicesInfoFetcher.cpp
+index f89e62f..9dcaf5c 100644
+--- a/src/DevicesInfoFetcher.cpp
++++ b/src/DevicesInfoFetcher.cpp
+@@ -14,6 +14,8 @@
+ #include "device/PixelBudsDevice.h"
+ #include "device/AapDevice.h"
+ #include "device/BhfDevice.h"
++#include "device/NothingDevice.h"
++#include "sdk/nothing/NothingProtocol.h"
+ 
+ #include <regex>
+ #include <iostream>
+@@ -186,6 +188,15 @@ DevicesInfoFetcher::~DevicesInfoFetcher()
+             return newDevice;
+         }
+ 
++        else if (NothingHelper::IsNothingDevice(deviceInfo->GetName(), deviceInfo->GetUuids()))
++        {
++            auto newDevice = NothingDevice::Create(deviceInfo, _audioClient, _settingsService);
++            newDevice->GetConnectedPropertyChangedEvent().Subscribe([this](size_t listenerId, bool newValue) {
++                TrySelectNewActiveDevice();
++            });
++            return newDevice;
++        }
++
+         else if (std::pair<GalaxyBudsModelIds, std::string> keyPair{};
+                  GalaxyBudsHelper::IsGalaxyBudsDevice(deviceInfo->GetUuids()) &&
+                  ((keyPair = GalaxyBudsHelper::SearchModelColor(deviceInfo->GetUuids(), deviceInfo->GetName())).first != GalaxyBudsModelIds::Unknown))
+diff --git a/src/device/NothingDevice.cpp b/src/device/NothingDevice.cpp
+new file mode 100644
+index 0000000..45eba03
+--- /dev/null
++++ b/src/device/NothingDevice.cpp
+@@ -0,0 +1,45 @@
++// MagicPodsCore: https://github.com/steam3d/MagicPodsCore
++// License: GPL-3.0
++
++#include "NothingDevice.h"
++
++#include "capabilities/nothing/NothingCapabilities.h"
++#include "capabilities/cmn/CmnBluetoothCodecCapability.h"
++
++namespace MagicPodsCore
++{
++    void NothingDevice::OnResponseDataReceived(const std::vector<unsigned char> &data)
++    {
++        for (const auto &packet : _packet.Feed(data))
++        {
++            Logger::Debug("%s: nothing packet cmd=0x%02X dir=0x%02X len=%zu", GetName().c_str(), packet.Cmd, packet.Direction, packet.Payload.size());
++            _ResponseDataRecived.FireEvent(packet);
++        }
++    }
++
++    NothingDevice::NothingDevice(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService)
++        : Device(deviceInfo, audioClient, settingsService) {}
++
++    void NothingDevice::SendPacket(NothingCmd cmd, NothingDir dir, const std::vector<unsigned char> &payload)
++    {
++        _client->SendData(_packet.Encode(cmd, dir, payload));
++    }
++
++    std::shared_ptr<NothingDevice> NothingDevice::Create(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService)
++    {
++        auto device = std::make_shared<NothingDevice>(deviceInfo, audioClient, settingsService);
++
++        device->capabilities.push_back(std::make_unique<CmnBluetoothCodecCapability>(*device));
++        device->capabilities.push_back(std::make_unique<NothingBatteryCapability>(*device));
++        device->capabilities.push_back(std::make_unique<NothingAncCapability>(*device));
++
++        // Earbuds answer only to requests, so ask for the current state right after connecting
++        NothingPacket packet;
++        device->_clientStartData.push_back(packet.Encode(NothingCmd::Battery, NothingDir::Get, {}));
++        device->_clientStartData.push_back(packet.Encode(NothingCmd::AncGet, NothingDir::Get, {}));
++
++        device->_client = Client::CreateRFCOMM(deviceInfo->GetAddress(), NothingHelper::GetServiceGuid(deviceInfo->GetUuids()));
++        device->Init();
++        return device;
++    }
++}
+diff --git a/src/device/NothingDevice.h b/src/device/NothingDevice.h
+new file mode 100644
+index 0000000..505c0ca
+--- /dev/null
++++ b/src/device/NothingDevice.h
+@@ -0,0 +1,31 @@
++// MagicPodsCore: https://github.com/steam3d/MagicPodsCore
++// License: GPL-3.0
++
++#pragma once
++
++#include "Event.h"
++#include "Device.h"
++#include "sdk/nothing/NothingProtocol.h"
++
++namespace MagicPodsCore
++{
++    class NothingDevice : public Device
++    {
++    private:
++        Event<NothingResponseData> _ResponseDataRecived{};
++        NothingPacket _packet;
++        void OnResponseDataReceived(const std::vector<unsigned char> &data) override;
++
++    public:
++        explicit NothingDevice(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService);
++
++        Event<NothingResponseData> &GetResponseDataRecived()
++        {
++            return _ResponseDataRecived;
++        }
++
++        void SendPacket(NothingCmd cmd, NothingDir dir, const std::vector<unsigned char> &payload);
++
++        static std::shared_ptr<NothingDevice> Create(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService);
++    };
++}
+diff --git a/src/device/capabilities/nothing/NothingCapabilities.cpp b/src/device/capabilities/nothing/NothingCapabilities.cpp
+new file mode 100644
+index 0000000..e050f16
+--- /dev/null
++++ b/src/device/capabilities/nothing/NothingCapabilities.cpp
+@@ -0,0 +1,215 @@
++// MagicPodsCore: https://github.com/steam3d/MagicPodsCore
++// License: GPL-3.0
++
++#include "NothingCapabilities.h"
++#include "Logger.h"
++
++namespace MagicPodsCore
++{
++    // ---------- base ----------
++
++    NothingCapability::NothingCapability(const std::string &name, bool isReadOnly, NothingDevice &device)
++        : Capability(name, isReadOnly), device(device)
++    {
++        this->device.GetResponseDataRecived().Subscribe([this](size_t id, const NothingResponseData &data) { OnReceivedData(data); });
++
++        this->device.GetClientStateChangedEvent().Subscribe([this](size_t id, ClientState state) {
++            if (state == ClientState::Disconnected)
++            {
++                Reset();
++                _onChanged.FireEvent(*this);
++            }
++        });
++    }
++
++    void NothingCapability::Reset()
++    {
++        Capability::Reset();
++    }
++
++    // ---------- ANC ----------
++
++    DeviceAncModes NothingAncCapability::FromNative(NothingAnc mode)
++    {
++        switch (mode)
++        {
++        case NothingAnc::Off:
++            return DeviceAncModes::Off;
++        case NothingAnc::Transparency:
++            return DeviceAncModes::Transparency;
++        case NothingAnc::Adaptive:
++            return DeviceAncModes::Adaptive;
++        // The UI has a single noise cancellation slot, so all strengths are shown as one
++        case NothingAnc::High:
++        case NothingAnc::Mid:
++        case NothingAnc::Low:
++        default:
++            return DeviceAncModes::NoiseCancellation;
++        }
++    }
++
++    NothingAnc NothingAncCapability::ToNative(DeviceAncModes mode)
++    {
++        switch (mode)
++        {
++        case DeviceAncModes::Off:
++            return NothingAnc::Off;
++        case DeviceAncModes::Transparency:
++            return NothingAnc::Transparency;
++        case DeviceAncModes::Adaptive:
++            return NothingAnc::Adaptive;
++        default: // NoiseCancellation, WindCancellation
++            return NothingAnc::High;
++        }
++    }
++
++    nlohmann::json NothingAncCapability::CreateJsonBody()
++    {
++        unsigned char options = static_cast<unsigned char>(DeviceAncModes::Off) |
++                                static_cast<unsigned char>(DeviceAncModes::Transparency) |
++                                static_cast<unsigned char>(DeviceAncModes::Adaptive) |
++                                static_cast<unsigned char>(DeviceAncModes::NoiseCancellation);
++        auto body = nlohmann::json::object();
++        body["selected"] = option;
++        body["options"] = options;
++        return body;
++    }
++
++    void NothingAncCapability::UpdateOption(DeviceAncModes newOption)
++    {
++        if (!isAvailable || option != newOption)
++        {
++            isAvailable = true;
++            option = newOption;
++            Logger::Info("ANC updated: %s", DeviceAncModesToString(option).c_str());
++            _onChanged.FireEvent(*this);
++        }
++    }
++
++    void NothingAncCapability::OnReceivedData(const NothingResponseData &data)
++    {
++        const auto &p = data.Payload;
++        unsigned char mode = 0;
++
++        if (data.Cmd == static_cast<unsigned char>(NothingCmd::AncGet) && p.size() >= 2)
++        {
++            if (p[0] == 0x01)
++                mode = p[1];
++            else if (p.size() >= 5 && p[3] == 0x01)
++                mode = p[4];
++            else
++                mode = p[1];
++        }
++        else if (data.Cmd == static_cast<unsigned char>(NothingCmd::AncPush) &&
++                 data.Direction == static_cast<unsigned char>(NothingDir::Unsolicited) &&
++                 p.size() == 3 && p[0] == 0x01)
++        {
++            mode = p[1];
++        }
++        else
++            return;
++
++        switch (static_cast<NothingAnc>(mode))
++        {
++        case NothingAnc::High:
++        case NothingAnc::Mid:
++        case NothingAnc::Low:
++        case NothingAnc::Adaptive:
++        case NothingAnc::Off:
++        case NothingAnc::Transparency:
++            UpdateOption(FromNative(static_cast<NothingAnc>(mode)));
++            break;
++        default:
++            Logger::Debug("NothingAncCapability: unknown mode %d", mode);
++        }
++    }
++
++    NothingAncCapability::NothingAncCapability(NothingDevice &device) : NothingCapability("anc", false, device) {}
++
++    void NothingAncCapability::SetFromJson(const nlohmann::json &json)
++    {
++        if (!json.contains(name))
++            return;
++
++        const auto &capability = json.at(name);
++        if (!capability.contains("selected") || !capability["selected"].is_number_integer())
++        {
++            Logger::Info("Error: NothingAncCapability::SetFromJson got no value or value is not an integer");
++            return;
++        }
++
++        unsigned char selected = static_cast<unsigned char>(capability["selected"].get<int>());
++        if (!isValidDeviceAncModesType(selected))
++        {
++            Logger::Info("Error: NothingAncCapability::SetFromJson got unexpected option: %d", selected);
++            return;
++        }
++
++        NothingAnc native = ToNative(static_cast<DeviceAncModes>(selected));
++        device.SendPacket(NothingCmd::AncSet, NothingDir::Set, {0x01, static_cast<unsigned char>(native), 0x00});
++        // Read back the real state so the UI always reflects what the earbuds accepted
++        device.SendPacket(NothingCmd::AncGet, NothingDir::Get, {});
++        Logger::Debug("NothingAncCapability::SetFromJson set native mode %d", static_cast<int>(native));
++    }
++
++    // ---------- battery ----------
++
++    nlohmann::json NothingBatteryCapability::CreateJsonBody()
++    {
++        return battery.CreateJsonBody();
++    }
++
++    void NothingBatteryCapability::Reset()
++    {
++        battery.ClearBattery();
++        NothingCapability::Reset();
++    }
++
++    void NothingBatteryCapability::OnReceivedData(const NothingResponseData &data)
++    {
++        bool isResponse = data.Cmd == static_cast<unsigned char>(NothingCmd::Battery);
++        bool isPush = data.Cmd == static_cast<unsigned char>(NothingCmd::BatteryPush) &&
++                      data.Direction == static_cast<unsigned char>(NothingDir::Unsolicited);
++        // Note: Ear (a) also sends unsolicited cmd 0x02 packets with a similar layout but unexplained values, they are ignored on purpose
++        if ((!isResponse && !isPush) || data.Payload.empty())
++            return;
++
++        // payload: [count] then (tag, value) pairs. tag 2 = left, 3 = right, 4 = case.
++        // value: low 7 bits = percent, bit 7 = charging (charging bit not yet confirmed on real hardware)
++        std::vector<DeviceBatteryData> result;
++        const auto &p = data.Payload;
++        for (size_t i = 1; i + 1 < p.size(); i += 2)
++        {
++            DeviceBatteryType type;
++            if (p[i] == 0x02)
++                type = DeviceBatteryType::Left;
++            else if (p[i] == 0x03)
++                type = DeviceBatteryType::Right;
++            else if (p[i] == 0x04)
++                type = DeviceBatteryType::Case;
++            else
++                continue;
++
++            short level = p[i + 1] & 0x7F;
++            bool charging = (p[i + 1] & 0x80) != 0;
++            result.emplace_back(type, level == 0 ? DeviceBatteryStatus::Disconnected : DeviceBatteryStatus::Connected, level, charging);
++        }
++
++        if (!result.empty())
++            battery.UpdateBattery(result);
++    }
++
++    NothingBatteryCapability::NothingBatteryCapability(NothingDevice &device) : NothingCapability("battery", true, device), battery(true)
++    {
++        batteryChangedEventId = battery.GetBatteryChangedEvent().Subscribe([this](size_t id, const std::vector<DeviceBatteryData> &b) {
++            if (!isAvailable)
++                isAvailable = true;
++            _onChanged.FireEvent(*this);
++        });
++    }
++
++    NothingBatteryCapability::~NothingBatteryCapability()
++    {
++        battery.GetBatteryChangedEvent().Unsubscribe(batteryChangedEventId);
++    }
++}
+diff --git a/src/device/capabilities/nothing/NothingCapabilities.h b/src/device/capabilities/nothing/NothingCapabilities.h
+new file mode 100644
+index 0000000..b768c8a
+--- /dev/null
++++ b/src/device/capabilities/nothing/NothingCapabilities.h
+@@ -0,0 +1,58 @@
++// MagicPodsCore: https://github.com/steam3d/MagicPodsCore
++// License: GPL-3.0
++
++#pragma once
++
++#include "device/capabilities/Capability.h"
++#include "device/NothingDevice.h"
++#include "device/DeviceBattery.h"
++#include "device/enums/DeviceAncModes.h"
++
++namespace MagicPodsCore
++{
++    class NothingCapability : public Capability
++    {
++    protected:
++        NothingDevice &device;
++        virtual void OnReceivedData(const NothingResponseData &data) = 0;
++        void Reset() override;
++
++    public:
++        explicit NothingCapability(const std::string &name, bool isReadOnly, NothingDevice &device);
++        ~NothingCapability() override = default;
++    };
++
++    class NothingAncCapability : public NothingCapability
++    {
++    private:
++        DeviceAncModes option = DeviceAncModes::Off;
++        static DeviceAncModes FromNative(NothingAnc mode);
++        static NothingAnc ToNative(DeviceAncModes mode);
++        void UpdateOption(DeviceAncModes newOption);
++
++    protected:
++        nlohmann::json CreateJsonBody() override;
++        void OnReceivedData(const NothingResponseData &data) override;
++
++    public:
++        explicit NothingAncCapability(NothingDevice &device);
++        void SetFromJson(const nlohmann::json &json) override;
++    };
++
++    class NothingBatteryCapability : public NothingCapability
++    {
++    private:
++        DeviceBattery battery;
++        size_t batteryChangedEventId;
++
++    protected:
++        nlohmann::json CreateJsonBody() override;
++        void OnReceivedData(const NothingResponseData &data) override;
++        void Reset() override;
++
++    public:
++        explicit NothingBatteryCapability(NothingDevice &device);
++        ~NothingBatteryCapability() override;
++        void SetFromJson(const nlohmann::json &json) override {};
++    };
++}
+diff --git a/src/sdk/nothing/NothingProtocol.h b/src/sdk/nothing/NothingProtocol.h
+new file mode 100644
+index 0000000..980b67a
+--- /dev/null
++++ b/src/sdk/nothing/NothingProtocol.h
+@@ -0,0 +1,175 @@
++// MagicPodsCore: https://github.com/steam3d/MagicPodsCore
++// License: GPL-3.0
++//
++// Nothing / CMF earbuds RFCOMM protocol (community reverse-engineered, see
++// https://github.com/debarkak/nothingx-pc). Frame layout:
++//   55 60 01 | cmd | dir | len_lo len_hi | op | payload... | crc16 (LE)
++// Pushes initiated by the earbuds may use header 55 00 01 and carry no CRC.
++
++#pragma once
++
++#include <algorithm>
++#include <cctype>
++#include <cstdint>
++#include <mutex>
++#include <string>
++#include <vector>
++
++namespace MagicPodsCore
++{
++    enum class NothingCmd : unsigned char
++    {
++        DeviceInfo = 0x06,
++        Battery = 0x07,      // response to a GET request
++        BatteryPush = 0x01,  // earbuds-initiated update (dir 0xE0), same payload as Battery. Confirmed on Ear (a)
++        AncSet = 0x0F,
++        AncGet = 0x1E,
++        AncPush = 0x03,      // earbuds-initiated ANC change (dir 0xE0, payload 01 <mode> 00). Confirmed on Ear (a)
++    };
++
++    enum class NothingDir : unsigned char
++    {
++        Get = 0xC0,
++        Set = 0xF0,
++        Ack = 0x70,
++        Response = 0x40,
++        Unsolicited = 0xE0,
++    };
++
++    enum class NothingAnc : unsigned char
++    {
++        High = 0x01,
++        Mid = 0x02,
++        Low = 0x03,
++        Adaptive = 0x04,
++        Off = 0x05,
++        Transparency = 0x07,
++    };
++
++    struct NothingResponseData
++    {
++        unsigned char Cmd{};
++        unsigned char Direction{};
++        unsigned char OpId{};
++        std::vector<unsigned char> Payload{};
++    };
++
++    class NothingPacket
++    {
++    private:
++        std::vector<unsigned char> _buffer{};
++        std::mutex _mutex{};
++
++    public:
++        // CRC-16/MODBUS, transmitted little-endian
++        static uint16_t Crc16(const unsigned char *data, size_t size)
++        {
++            uint16_t crc = 0xFFFF;
++            for (size_t i = 0; i < size; i++)
++            {
++                crc ^= data[i];
++                for (int b = 0; b < 8; b++)
++                    crc = (crc & 1) ? static_cast<uint16_t>((crc >> 1) ^ 0xA001) : static_cast<uint16_t>(crc >> 1);
++            }
++            return crc;
++        }
++
++        std::vector<unsigned char> Encode(NothingCmd cmd, NothingDir dir, const std::vector<unsigned char> &payload, unsigned char opId = 1)
++        {
++            std::vector<unsigned char> frame{0x55, 0x60, 0x01,
++                                             static_cast<unsigned char>(cmd), static_cast<unsigned char>(dir),
++                                             static_cast<unsigned char>(payload.size() & 0xFF),
++                                             static_cast<unsigned char>((payload.size() >> 8) & 0xFF),
++                                             opId};
++            frame.insert(frame.end(), payload.begin(), payload.end());
++            uint16_t crc = Crc16(frame.data(), frame.size());
++            frame.push_back(static_cast<unsigned char>(crc & 0xFF));
++            frame.push_back(static_cast<unsigned char>(crc >> 8));
++            return frame;
++        }
++
++        // Feed raw RFCOMM bytes, returns every complete frame found (a frame may be split or merged)
++        std::vector<NothingResponseData> Feed(const std::vector<unsigned char> &data)
++        {
++            std::lock_guard lock{_mutex};
++            std::vector<NothingResponseData> result;
++            _buffer.insert(_buffer.end(), data.begin(), data.end());
++
++            while (_buffer.size() >= 8)
++            {
++                auto start = std::find(_buffer.begin(), _buffer.end(), static_cast<unsigned char>(0x55));
++                if (start == _buffer.end())
++                {
++                    _buffer.clear();
++                    break;
++                }
++                _buffer.erase(_buffer.begin(), start);
++                if (_buffer.size() < 8)
++                    break;
++
++                bool standard = _buffer[1] == 0x60 && _buffer[2] == 0x01;
++                bool unsolicited = _buffer[1] == 0x00 && _buffer[2] == 0x01;
++                if (!standard && !unsolicited)
++                {
++                    _buffer.erase(_buffer.begin());
++                    continue;
++                }
++
++                size_t payloadLen = _buffer[5] | (static_cast<size_t>(_buffer[6]) << 8);
++                size_t total = 8 + payloadLen + (standard ? 2 : 0);
++                if (_buffer.size() < total)
++                    break;
++
++                if (standard)
++                {
++                    uint16_t got = static_cast<uint16_t>(_buffer[total - 2] | (_buffer[total - 1] << 8));
++                    uint16_t full = Crc16(_buffer.data(), total - 2);
++                    uint16_t payloadOnly = Crc16(_buffer.data() + 8, payloadLen);
++                    if (got != full && got != payloadOnly)
++                    {
++                        _buffer.erase(_buffer.begin());
++                        continue;
++                    }
++                }
++
++                NothingResponseData packet;
++                packet.Cmd = _buffer[3];
++                packet.Direction = _buffer[4];
++                packet.OpId = _buffer[7];
++                packet.Payload.assign(_buffer.begin() + 8, _buffer.begin() + 8 + payloadLen);
++                result.push_back(std::move(packet));
++                _buffer.erase(_buffer.begin(), _buffer.begin() + total);
++            }
++            return result;
++        }
++    };
++
++    class NothingHelper
++    {
++    public:
++        inline static const std::string A2DP_SINK = "0000110b-0000-1000-8000-00805f9b34fb";
++        inline static const std::string SPP = "00001101-0000-1000-8000-00805f9b34fb";
++        // Custom service UUID of Nothing earbuds, present on Ear (a) (RFCOMM channel is resolved through SDP).
++        // If a model lacks it, the standard SPP UUID is used instead.
++        inline static const std::string NOTHING_SERVICE = "aeac4a03-dff5-498f-843a-34487cf133eb";
++
++        static bool IsNothingDevice(const std::string &name, const std::vector<std::string> &uuids)
++        {
++            std::string lower = name;
++            std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
++            bool nameMatch = lower.find("nothing ear") != std::string::npos ||
++                             lower.find("cmf buds") != std::string::npos ||
++                             lower.find("cmf headphone") != std::string::npos;
++            // Audio sink required, so e.g. a paired Nothing Phone is not picked up
++            bool isAudio = std::find(uuids.begin(), uuids.end(), A2DP_SINK) != uuids.end();
++            return nameMatch && isAudio;
++        }
++
++        static std::string GetServiceGuid(const std::vector<std::string> &uuids)
++        {
++            if (std::find(uuids.begin(), uuids.end(), NOTHING_SERVICE) != uuids.end())
++                return NOTHING_SERVICE;
++            return SPP;
++        }
++    };
++}
