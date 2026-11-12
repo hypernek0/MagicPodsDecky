@@ -7,9 +7,7 @@ on:
     tags: ["v*"]
 
 env:
-  # MagicPodsCore commit the patch was made against. Do not change unless you also redo the patch.
   CORE_REPO: https://github.com/steam3d/MagicPodsCore.git
-  CORE_REF: 173245a14beb40fafef3a276da55747a0c0a1c59
 
 permissions:
   contents: write
@@ -22,12 +20,19 @@ jobs:
         with:
           submodules: false
 
-      - name: Fetch MagicPodsCore and apply Nothing patch
+      - name: Fetch MagicPodsCore (commit pinned by the plugin) and apply Nothing patch
         run: |
+          # The core commit is whatever the plugin repo pins as its submodule,
+          # so syncing the fork with upstream automatically moves the core too.
+          CORE_REF=$(git ls-tree HEAD backend/src/MagicPodsCore | awk '{print $3}')
+          echo "Pinned MagicPodsCore commit: $CORE_REF"
           rm -rf backend/src/MagicPodsCore
           git clone "$CORE_REPO" backend/src/MagicPodsCore
           git -C backend/src/MagicPodsCore checkout "$CORE_REF"
-          git -C backend/src/MagicPodsCore apply --check "$GITHUB_WORKSPACE/patches/nothing-ear-a-support.patch"
+          if ! git -C backend/src/MagicPodsCore apply --check "$GITHUB_WORKSPACE/patches/nothing-ear-a-support.patch"; then
+            echo "::error::The Nothing patch no longer applies to MagicPodsCore $CORE_REF. Upstream changed; the patch must be regenerated."
+            exit 1
+          fi
           git -C backend/src/MagicPodsCore apply "$GITHUB_WORKSPACE/patches/nothing-ear-a-support.patch"
           git -C backend/src/MagicPodsCore status --short
 
@@ -49,14 +54,15 @@ jobs:
           curl -fL -o cli/decky "https://github.com/SteamDeckHomebrew/cli/releases/latest/download/decky-linux-x86_64"
           chmod +x cli/decky
 
-      - name: Build plugin (frontend + C++ backend in Docker)
+      - name: Build plugin (frontend + C++ backend and bundled FFmpeg in Docker)
         run: sudo ./cli/decky plugin build "$(pwd)"
 
-      - name: Check that the zip contains the backend binary
+      - name: Check that the zip contains the backend binary and bundled libraries
         run: |
           ls -la out
           unzip -l out/*.zip | tee /tmp/zip.txt
           grep -q "bin/magicpodscore" /tmp/zip.txt
+          grep -q "bin/lib/libavcodec" /tmp/zip.txt
 
       - uses: actions/upload-artifact@v4
         with:
