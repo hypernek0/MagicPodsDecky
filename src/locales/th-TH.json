@@ -1,0 +1,25 @@
+{
+    "translation": {
+        "capabilities_aap_left_press_and_hold_label": "กดด้านซ้ายค้างไว้",
+        "capabilities_aap_right_press_and_hold_label": "กดด้านขวาค้างไว้",
+        "capabilities_aap_press_and_hold_voice_assistant": "ผู้ช่วยเสียง",
+        "capabilities_aap_anc_off_mode_label": "โหมดการฟังปิด",
+        "capabilities_aap_anc_off_mode_enabled": "เปิดใช้งาน",
+        "capabilities_aap_anc_off_mode_disabled": "ปิดใช้งาน",
+        "capabilities_aap_press_and_hold_volume_down": "ลดระดับเสียง",
+        "capabilities_aap_press_and_hold_volume_up": "เพิ่มระดับเสียง",
+        "capabilities_aap_digital_crown_label": "Digital Crown",
+        "capabilities_aap_digital_crown_back_to_front": "จากด้านหลังไปด้านหน้า",
+        "capabilities_aap_digital_crown_front_to_back": "จากด้านหน้าไปด้านหลัง",
+        "capabilities_aap_cycle_modes_label": "การควบคุมเสียงรบกวนจากหูฟัง",
+        "capabilities_aap_cycle_modes_do_not_change": "ไม่เปลี่ยนแปลง",
+        "capabilities_aap_cycle_modes_hint": "เลือกอย่างน้อยสองโหมด หรือยกเลิกการเลือกทั้งหมดเพื่อไม่เปลี่ยนการตั้งค่า",
+        "capabilities_aap_optimized_charge_label": "ขีดจำกัดการชาร์จที่ปรับให้เหมาะสม",
+        "capabilities_aap_conversation_awareness_volume_label": "ลดระดับเสียงขณะพูด",
+        "capabilities_cmn_ear_detection_pause_media_label": "หยุดชั่วคราวเมื่อถอดออกจากหูข้างหนึ่ง",
+        "capabilities_cmn_ear_detection_lower_volume_label": "ลดระดับเสียงเมื่อถอดออกจากหูข้างหนึ่ง",
+        "capabilities_cmn_ear_detection_switch_to_speaker_label": "สลับไปใช้ลำโพงเมื่อถอดออกทั้งหมด",
+        "capabilities_cmn_volume_reduction_off_label": "ปิด",
+        "capabilities_aap_sleep_detection_label": "หยุดชั่วคราวเมื่อหลับ"
+    }
+}

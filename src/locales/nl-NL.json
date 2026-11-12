@@ -1,0 +1,25 @@
+{
+    "translation": {
+        "capabilities_aap_left_press_and_hold_label": "Links ingedrukt houden",
+        "capabilities_aap_right_press_and_hold_label": "Rechts ingedrukt houden",
+        "capabilities_aap_press_and_hold_voice_assistant": "Spraakassistent",
+        "capabilities_aap_anc_off_mode_label": "Luistermodus 'Uit'",
+        "capabilities_aap_anc_off_mode_enabled": "Ingeschakeld",
+        "capabilities_aap_anc_off_mode_disabled": "Uitgeschakeld",
+        "capabilities_aap_press_and_hold_volume_down": "Volume lager",
+        "capabilities_aap_press_and_hold_volume_up": "Volume hoger",
+        "capabilities_aap_digital_crown_label": "Digital Crown",
+        "capabilities_aap_digital_crown_back_to_front": "Van achteren naar voren",
+        "capabilities_aap_digital_crown_front_to_back": "Van voren naar achteren",
+        "capabilities_aap_cycle_modes_label": "Ruisbeheersing via de koptelefoon",
+        "capabilities_aap_cycle_modes_do_not_change": "Niet wijzigen",
+        "capabilities_aap_cycle_modes_hint": "Selecteer ten minste twee modi of wis alle selecties om de instelling ongewijzigd te laten.",
+        "capabilities_aap_optimized_charge_label": "Geoptimaliseerde oplaadlimiet",
+        "capabilities_aap_conversation_awareness_volume_label": "Volume verlagen tijdens het praten",
+        "capabilities_cmn_ear_detection_pause_media_label": "Pauzeren bij afnemen van één oor",
+        "capabilities_cmn_ear_detection_lower_volume_label": "Volume verlagen bij afnemen van één oor",
+        "capabilities_cmn_ear_detection_switch_to_speaker_label": "Overschakelen naar luidspreker bij volledig afnemen",
+        "capabilities_cmn_volume_reduction_off_label": "Uit",
+        "capabilities_aap_sleep_detection_label": "Pauzeren bij inslapen"
+    }
+}

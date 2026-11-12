@@ -5,6 +5,7 @@ import {
   joinClassNames,
   SliderField,
   staticClasses,
+  Toggle,
   ToggleField,
   quickAccessMenuClasses,
   Focusable,
@@ -13,6 +14,7 @@ import {
   showContextMenu,
   Menu,
   MenuItem,
+  DropdownItem,
   Field,
   DialogButton
 } from "@decky/ui";
@@ -21,6 +23,7 @@ import { useEffect, useState, FC, useRef } from 'react';
 import { Battery } from "../components/battery";
 import { Backend } from "../backend";
 import { ANC_MODE_ADAPTIVE, ANC_MODE_ANC, ANC_MODE_OFF, ANC_MODE_TRANSPARENCY, ANC_MODE_WIND } from "../ButtonIcons";
+import { MultiSelect, MultiSelectOption } from "../components/multiSelect";
 
 const FieldWithSeparator = joinClassNames(
   gamepadDialogClasses.Field,
@@ -36,6 +39,12 @@ const OptionsPanelSection = joinClassNames(
 const iconModesStyle = {
   display: "block"
 }
+
+const InformationIcon = () => (
+  <svg width="20px" height="20px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+    <path fillRule="evenodd" clipRule="evenodd" d="M18 3C15.0333 3 12.1332 3.87973 9.66645 5.52796C7.19971 7.17618 5.27712 9.51886 4.14181 12.2597C3.00649 15.0006 2.70944 18.0166 3.28822 20.9264C3.867 23.8361 5.29561 26.5088 7.3934 28.6066C9.49119 30.7044 12.1639 32.133 15.0736 32.7118C17.9834 33.2906 20.9994 32.9935 23.7402 31.8582C26.4811 30.7229 28.8238 28.8003 30.472 26.3336C32.1203 23.8668 33 20.9667 33 18C33 16.0302 32.612 14.0796 31.8582 12.2597C31.1044 10.4399 29.9995 8.78628 28.6066 7.3934C27.2137 6.00052 25.5601 4.89563 23.7402 4.14181C21.9204 3.38799 19.9698 3 18 3ZM20.5 26H15.5V16H20.5V26ZM18 14C17.4067 14 16.8266 13.8241 16.3333 13.4944C15.8399 13.1648 15.4554 12.6962 15.2284 12.1481C15.0013 11.5999 14.9419 10.9967 15.0576 10.4147C15.1734 9.83279 15.4591 9.29824 15.8787 8.87868C16.2982 8.45912 16.8328 8.1734 17.4147 8.05764C17.9967 7.94189 18.5999 8.0013 19.148 8.22836C19.6962 8.45542 20.1648 8.83994 20.4944 9.33329C20.8241 9.82664 21 10.4067 21 11C21 11.7956 20.6839 12.5587 20.1213 13.1213C19.5587 13.6839 18.7956 14 18 14Z" fill="currentColor" />
+  </svg>
+);
 
 export interface BatteryDataProps {
   battery: number,
@@ -67,27 +76,85 @@ interface NumberCapabilityProps {
   readonly: boolean
 }
 
+interface BitmaskCapabilityProps extends NumberCapabilityProps {
+  options: number
+}
+
+interface PressAndHoldAirPodModeSelectedProps {
+  right: number,
+  left: number
+}
+
+interface PressAndHoldAirPodModeCapabilityProps {
+  selected: PressAndHoldAirPodModeSelectedProps,
+  options: number[],
+  readonly: boolean
+}
+
 interface StringCapabilityProps {
   selected: string,
   options: Array<[string, string]>,
   readonly: boolean
 }
 
+interface CustomEqSelectedProps {
+  enabled: boolean,
+  low: number,
+  mid: number,
+  high: number
+}
+
+interface CustomEqCapabilityProps {
+  selected: CustomEqSelectedProps,
+  readonly: boolean
+}
+
+interface EarDetectionSelectedProps {
+  pauseMedia: boolean,
+  switchToSpeakers: boolean,
+  lowerVolume: number
+}
+
+interface EarDetectionCapabilityProps {
+  selected: EarDetectionSelectedProps,
+  readonly: boolean
+}
+
+interface ConversationAwarenessSelectedProps {
+  enabled: boolean,
+  volume: number
+}
+
+interface ConversationAwarenessCapabilityProps {
+  selected: ConversationAwarenessSelectedProps,
+  readonly: boolean
+}
+
 interface CapabilitiesProps {
   anc?: AncProps;
   battery?: BatteryProps;
-  conversationAwareness?: BooleanCapabilityProps;
+  conversationAwareness?: ConversationAwarenessCapabilityProps;
   conversationAwarenessSpeaking?: BooleanCapabilityProps;
   personalizedVolume?: BooleanCapabilityProps;
   ancOneAirPod?: BooleanCapabilityProps;
+  ancOffMode?: NumberCapabilityProps;
   volumeSwipe?: BooleanCapabilityProps;
   endCall?: NumberCapabilityProps;
   pressAndHoldDuration?: NumberCapabilityProps;
+  pressAndHoldAirPodMode?: PressAndHoldAirPodModeCapabilityProps;
+  pressAndHoldAirPodModeAnc?: BitmaskCapabilityProps;
   pressSpeed?: NumberCapabilityProps;
+  digitalCrown?: NumberCapabilityProps;
   toneVolume?: NumberCapabilityProps;
   volumeSwipeLength?: NumberCapabilityProps;
   adaptiveAudioNoise?: NumberCapabilityProps;
   bluetoothCodec?: StringCapabilityProps;
+  highResolutionMicrophone?: BooleanCapabilityProps;
+  earDetection?: EarDetectionCapabilityProps;
+  earDetectionState?: NumberCapabilityProps;
+  customEq?: CustomEqCapabilityProps;
+  optimizedCharge?: BooleanCapabilityProps;
+  sleepDetection?: BooleanCapabilityProps;
 }
 
 export interface headphoneInfoProps {
@@ -105,6 +172,34 @@ export const AncModes = {
   WIND: 8,
   ANC: 16,
 };
+
+const translatedAncModeLabel = (key: string) => t(key).replace("<icon/>", "");
+
+const getPressAndHoldAncOptions = (availableModes: number): MultiSelectOption[] => [
+  { label: translatedAncModeLabel("settings_anc_modes_off_label"), icon: <ANC_MODE_OFF style={iconModesStyle} />, value: 0x01 },
+  { label: translatedAncModeLabel("settings_anc_modes_transparency_label"), icon: <ANC_MODE_TRANSPARENCY style={iconModesStyle} />, value: 0x04 },
+  { label: translatedAncModeLabel("settings_anc_modes_adaptive_label"), icon: <ANC_MODE_ADAPTIVE style={iconModesStyle} />, value: 0x08 },
+  { label: translatedAncModeLabel("settings_anc_modes_anc_label"), icon: <ANC_MODE_ANC style={iconModesStyle} />, value: 0x02 },
+].filter((option) => (availableModes & option.value) !== 0);
+
+const getPressAndHoldAirPodModeOptions = (availableModes: number[]) => [
+  { label: t("capabilities_aap_press_and_hold_voice_assistant"), data: 0x01 },
+  { label: t("capabilities_noise_control_label"), data: 0x05 },
+  { label: t("capabilities_aap_press_and_hold_volume_down"), data: 0x07 },
+  { label: t("capabilities_aap_press_and_hold_volume_up"), data: 0x06 },
+].filter((option) => availableModes.includes(option.data));
+
+const getDigitalCrownOptions = () => [
+  { label: t("capabilities_aap_cycle_modes_do_not_change"), data: -1 },
+  { label: t("capabilities_aap_digital_crown_back_to_front"), data: 0x01 },
+  { label: t("capabilities_aap_digital_crown_front_to_back"), data: 0x02 },
+];
+
+const getAncOffModeOptions = () => [
+  { label: t("capabilities_aap_cycle_modes_do_not_change"), data: -1 },
+  { label: t("capabilities_aap_anc_off_mode_enabled"), data: 0x01 },
+  { label: t("capabilities_aap_anc_off_mode_disabled"), data: 0x02 },
+];
 
 const getAncSliderConfig = async (backend: Backend, options: number, selected: number) => {
   backend.logDebug("Info: Options:", options, "Selected:", selected);
@@ -204,8 +299,19 @@ const showCodecModal = (options: Array<[string, string]>) => {
   );
 };
 
+const showHighResolutionMicrophoneModal = () => {
+  showModal(
+    <ModalRoot>
+      <span style={{ whiteSpace: "pre-line", wordBreak: "break-word" }}>
+        {t("capabilities_aap_high_resolution_microphone_description")}
+      </span>
+    </ModalRoot>,
+    window
+  );
+};
+
 function hasOtherCapabilities(capabilities: CapabilitiesProps): boolean {
-  const { anc, battery, ...rest } = capabilities;
+  const { anc, battery, highResolutionMicrophone, conversationAwarenessSpeaking, earDetectionState, ...rest } = capabilities;
   return Object.values(rest).some(value => value !== undefined && value !== null);
 }
 
@@ -218,7 +324,7 @@ export const TabInfo: FC<{
 
   const [config, setConfig] = useState<Awaited<ReturnType<typeof getAncSliderConfig>> | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [volume, setVolume] = useState<number>(0);
+  const [lowBatteryThreshold, setLowBatteryThreshold] = useState<number>(0);
 
 
   const timeoutIds = useRef<Record<string, NodeJS.Timeout>>({});
@@ -246,6 +352,56 @@ export const TabInfo: FC<{
       backend.logInfo(`Send set ${key} to`, value);
       backend.setCapability(key, address, value);
     }
+  }
+
+  const handleEarDetectionChange = (changes: Partial<EarDetectionSelectedProps>, debounce: boolean = false) => {
+    const capability = info?.capabilities?.earDetection;
+    if (capability == null) return;
+
+    const selected = { ...capability.selected, ...changes };
+    commonUpdateInfo("earDetection", selected);
+
+    const address = info?.address;
+    if (address == null) return;
+
+    if (timeoutIds.current.earDetection)
+      clearTimeout(timeoutIds.current.earDetection);
+
+    const send = () => {
+      backend.logInfo("Send set earDetection to", selected);
+      backend.setCapability("earDetection", address, selected);
+      delete timeoutIds.current.earDetection;
+    };
+
+    if (debounce)
+      timeoutIds.current.earDetection = setTimeout(send, 350);
+    else
+      send();
+  }
+
+  const handleConversationAwarenessChange = (changes: Partial<ConversationAwarenessSelectedProps>, debounce: boolean = false) => {
+    const capability = info?.capabilities?.conversationAwareness;
+    if (capability == null) return;
+
+    const selected = { ...capability.selected, ...changes };
+    commonUpdateInfo("conversationAwareness", selected);
+
+    const address = info?.address;
+    if (address == null) return;
+
+    if (timeoutIds.current.conversationAwareness)
+      clearTimeout(timeoutIds.current.conversationAwareness);
+
+    const send = () => {
+      backend.logInfo("Send set conversationAwareness to", selected);
+      backend.setCapability("conversationAwareness", address, selected);
+      delete timeoutIds.current.conversationAwareness;
+    };
+
+    if (debounce)
+      timeoutIds.current.conversationAwareness = setTimeout(send, 350);
+    else
+      send();
   }
 
   const handleStringCapabilityChange = (key: CapabilityKey, value: string) => {
@@ -277,6 +433,66 @@ export const TabInfo: FC<{
     }, 350);
   };
 
+  const handleNumberCapabilityCommit = (key: CapabilityKey, value: number) => {
+    commonUpdateInfo(key, value);
+    const address = info?.address;
+    if (address) {
+      backend.logInfo(`Send set ${key} to`, value);
+      backend.setCapability(key, address, value);
+    }
+  };
+
+  const handleDigitalCrownChange = (value: number) => {
+    const address = info?.address;
+    if (address) {
+      backend.logInfo("Send set digitalCrown to", value);
+      backend.setCapability("digitalCrown", address, value);
+    }
+  };
+
+  const handleAncOffModeChange = (value: number) => {
+    const address = info?.address;
+    if (address) {
+      backend.logInfo("Send set ancOffMode to", value);
+      backend.setCapability("ancOffMode", address, value);
+    }
+  };
+
+  const handlePressAndHoldAirPodModeChange = (side: "left" | "right", value: number) => {
+    const address = info?.address;
+    if (address) {
+      const selected = { [side]: value };
+      backend.logInfo("Send set pressAndHoldAirPodMode to", selected);
+      backend.setCapability("pressAndHoldAirPodMode", address, selected);
+    }
+  };
+
+  const handleCustomEqChange = (changes: Partial<CustomEqSelectedProps>, debounce: boolean = false) => {
+    const capability = info?.capabilities?.customEq;
+    if (capability == null) return;
+
+    const selected = { ...capability.selected, ...changes };
+    commonUpdateInfo("customEq", selected);
+
+    const address = info?.address;
+    if (address == null) return;
+
+    if (timeoutIds.current.customEq)
+      clearTimeout(timeoutIds.current.customEq);
+
+    const send = () => {
+      backend.setCapability("customEq", address, selected);
+      delete timeoutIds.current.customEq;
+    };
+
+    if (!debounce) {
+      send();
+      return;
+    }
+
+    timeoutIds.current.customEq = setTimeout(send, 350);
+  };
+
   useEffect(() => {
     const fetchConfig = async () => {
       //setLoaded(false);
@@ -295,11 +511,12 @@ export const TabInfo: FC<{
   //[info, backend]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      setVolume(await backend.loadNumberSetting("conversation_awareness_volume") ?? 0);
+    const fetchLowBatteryThreshold = async () => {
+      setLowBatteryThreshold(await backend.loadNumberSetting("notif_low_battery") ?? 0);
     }
-    fetchSettings();
-  }, [info?.capabilities?.conversationAwareness?.selected]);
+    fetchLowBatteryThreshold();
+  }, [info]);
+
   return (
     <>
       <div style={{ marginLeft: "-8px", marginRight: "-8px" }}>
@@ -311,10 +528,10 @@ export const TabInfo: FC<{
               <PanelSectionRow>
                 <div className={FieldWithSeparator}>
                   <div style={{ display: "flex", padding: "0px 0px 0px 0px" }}>
-                    <Battery title={t("battery_single")} battery={info.capabilities.battery.single.battery} isCharging={info.capabilities.battery.single.charging} status={info.capabilities.battery.single.status} />
-                    <Battery title={t("battery_left")} battery={info.capabilities.battery.left.battery} isCharging={info.capabilities.battery.left.charging} status={info.capabilities.battery.left.status} />
-                    <Battery title={t("battery_right")} battery={info.capabilities.battery.right.battery} isCharging={info.capabilities.battery.right.charging} status={info.capabilities.battery.right.status} />
-                    <Battery title={t("battery_case")} battery={info.capabilities.battery.case.battery} isCharging={info.capabilities.battery.case.charging} status={info.capabilities.battery.case.status} />
+                    <Battery title={t("battery_single")} battery={info.capabilities.battery.single.battery} isCharging={info.capabilities.battery.single.charging} status={info.capabilities.battery.single.status} lowBatteryThreshold={lowBatteryThreshold} />
+                    <Battery title={t("battery_left")} battery={info.capabilities.battery.left.battery} isCharging={info.capabilities.battery.left.charging} status={info.capabilities.battery.left.status} lowBatteryThreshold={lowBatteryThreshold} />
+                    <Battery title={t("battery_right")} battery={info.capabilities.battery.right.battery} isCharging={info.capabilities.battery.right.charging} status={info.capabilities.battery.right.status} lowBatteryThreshold={lowBatteryThreshold} />
+                    <Battery title={t("battery_case")} battery={info.capabilities.battery.case.battery} isCharging={info.capabilities.battery.case.charging} status={info.capabilities.battery.case.status} lowBatteryThreshold={lowBatteryThreshold} />
                   </div>
                 </div>
               </PanelSectionRow>
@@ -340,6 +557,39 @@ export const TabInfo: FC<{
               </PanelSectionRow>
             }
             {/* Fix jumping selection issue */}
+            {loaded == true && info?.capabilities?.highResolutionMicrophone != null &&
+              <PanelSectionRow>
+                <Field
+                  bottomSeparator="none"
+                  label={t("capabilities_aap_high_resolution_microphone_label")}
+                  inlineWrap="keep-inline"
+                  childrenContainerWidth="min"
+                >
+                  <Focusable style={{ display: 'flex', alignItems: 'center' }}>
+                    <Toggle
+                      value={info.capabilities.highResolutionMicrophone.selected}
+                      disabled={info.capabilities.highResolutionMicrophone.readonly}
+                      onChange={(b) => { handleBooleanCapabilityChange("highResolutionMicrophone", b); }}
+                    />
+                    <DialogButton
+                      onClick={() => showHighResolutionMicrophoneModal()}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: '10px',
+                        maxWidth: '40px',
+                        minWidth: 'auto',
+                        marginLeft: '.5em',
+                      }}
+                    >
+                      <InformationIcon />
+                    </DialogButton>
+                  </Focusable>
+                </Field>
+              </PanelSectionRow>
+            }
+            {/* Fix jumping selection issue */}
             {loaded == true && info?.capabilities != null && hasOtherCapabilities(info.capabilities) && (
               <>
                 <Focusable
@@ -351,7 +601,7 @@ export const TabInfo: FC<{
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: "16px", paddingRight: "16px", width: "100%" }}
                     onClick={() => showQrModal()}>
                     {t("capabilities_header")}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M18 3C15.0333 3 12.1332 3.87973 9.66645 5.52796C7.19971 7.17618 5.27712 9.51886 4.14181 12.2597C3.00649 15.0006 2.70944 18.0166 3.28822 20.9264C3.867 23.8361 5.29561 26.5088 7.3934 28.6066C9.49119 30.7044 12.1639 32.133 15.0736 32.7118C17.9834 33.2906 20.9994 32.9935 23.7402 31.8582C26.4811 30.7229 28.8238 28.8003 30.472 26.3336C32.1203 23.8668 33 20.9667 33 18C33 16.0302 32.612 14.0796 31.8582 12.2597C31.1044 10.4399 29.9995 8.78628 28.6066 7.3934C27.2137 6.00052 25.5601 4.89563 23.7402 4.14181C21.9204 3.38799 19.9698 3 18 3ZM20.5 26H15.5V16H20.5V26ZM18 14C17.4067 14 16.8266 13.8241 16.3333 13.4944C15.8399 13.1648 15.4554 12.6962 15.2284 12.1481C15.0013 11.5999 14.9419 10.9967 15.0576 10.4147C15.1734 9.83279 15.4591 9.29824 15.8787 8.87868C16.2982 8.45912 16.8328 8.1734 17.4147 8.05764C17.9967 7.94189 18.5999 8.0013 19.148 8.22836C19.6962 8.45542 20.1648 8.83994 20.4944 9.33329C20.8241 9.82664 21 10.4067 21 11C21 11.7956 20.6839 12.5587 20.1213 13.1213C19.5587 13.6839 18.7956 14 18 14Z" fill="currentColor"></path></svg>
+                    <InformationIcon />
                   </div>
                 </Focusable>
 
@@ -395,7 +645,7 @@ export const TabInfo: FC<{
                               marginLeft: '.5em',
                             }}
                           >
-                            <svg width="20px" height="20px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M18 3C15.0333 3 12.1332 3.87973 9.66645 5.52796C7.19971 7.17618 5.27712 9.51886 4.14181 12.2597C3.00649 15.0006 2.70944 18.0166 3.28822 20.9264C3.867 23.8361 5.29561 26.5088 7.3934 28.6066C9.49119 30.7044 12.1639 32.133 15.0736 32.7118C17.9834 33.2906 20.9994 32.9935 23.7402 31.8582C26.4811 30.7229 28.8238 28.8003 30.472 26.3336C32.1203 23.8668 33 20.9667 33 18C33 16.0302 32.612 14.0796 31.8582 12.2597C31.1044 10.4399 29.9995 8.78628 28.6066 7.3934C27.2137 6.00052 25.5601 4.89563 23.7402 4.14181C21.9204 3.38799 19.9698 3 18 3ZM20.5 26H15.5V16H20.5V26ZM18 14C17.4067 14 16.8266 13.8241 16.3333 13.4944C15.8399 13.1648 15.4554 12.6962 15.2284 12.1481C15.0013 11.5999 14.9419 10.9967 15.0576 10.4147C15.1734 9.83279 15.4591 9.29824 15.8787 8.87868C16.2982 8.45912 16.8328 8.1734 17.4147 8.05764C17.9967 7.94189 18.5999 8.0013 19.148 8.22836C19.6962 8.45542 20.1648 8.83994 20.4944 9.33329C20.8241 9.82664 21 10.4067 21 11C21 11.7956 20.6839 12.5587 20.1213 13.1213C19.5587 13.6839 18.7956 14 18 14Z" fill="currentColor"></path></svg>
+                            <InformationIcon />
                           </DialogButton>
                         </Focusable>
                       </Field>
@@ -403,15 +653,55 @@ export const TabInfo: FC<{
                   </>
                 )}
 
-                {info?.capabilities?.conversationAwareness != null && (
+                {info?.capabilities?.earDetection != null &&
                   <>
                     <PanelSectionRow>
-                      <ToggleField checked={info?.capabilities?.conversationAwareness.selected} label={t("capabilities_aap_conversation_awareness_label")}
-                        onChange={(b) => { handleBooleanCapabilityChange("conversationAwareness", b); }} />
+                      <ToggleField
+                        checked={info.capabilities.earDetection.selected.pauseMedia}
+                        disabled={info.capabilities.earDetection.readonly}
+                        label={t("capabilities_cmn_ear_detection_pause_media_label")}
+                        onChange={(b) => { handleEarDetectionChange({ pauseMedia: b }); }} />
                     </PanelSectionRow>
                     <PanelSectionRow>
                       <SliderField
-                        value={volume}
+                        value={info.capabilities.earDetection.selected.lowerVolume}
+                        max={100}
+                        min={0}
+                        step={1}
+                        label={t("capabilities_cmn_ear_detection_lower_volume_label")}
+                        notchCount={2}
+                        notchTicksVisible={false}
+                        showValue={true}
+                        valueSuffix="%"
+                        disabled={info.capabilities.earDetection.readonly}
+                        notchLabels={[
+                          { label: t("capabilities_cmn_volume_reduction_off_label"), notchIndex: 0, value: 0 },
+                          { label: "", notchIndex: 1, value: 100 }
+                        ]}
+                        onChange={(n) => { handleEarDetectionChange({ lowerVolume: n }, true); }} />
+                    </PanelSectionRow>
+                    <PanelSectionRow>
+                      <ToggleField
+                        checked={info.capabilities.earDetection.selected.switchToSpeakers}
+                        disabled={info.capabilities.earDetection.readonly}
+                        label={t("capabilities_cmn_ear_detection_switch_to_speaker_label")}
+                        onChange={(b) => { handleEarDetectionChange({ switchToSpeakers: b }); }} />
+                    </PanelSectionRow>
+                  </>
+                }
+
+                {info?.capabilities?.conversationAwareness != null && (
+                  <>
+                    <PanelSectionRow>
+                      <ToggleField
+                        checked={info.capabilities.conversationAwareness.selected.enabled}
+                        disabled={info.capabilities.conversationAwareness.readonly}
+                        label={t("capabilities_aap_conversation_awareness_label")}
+                        onChange={(b) => { handleConversationAwarenessChange({ enabled: b }); }} />
+                    </PanelSectionRow>
+                    <PanelSectionRow>
+                      <SliderField
+                        value={info.capabilities.conversationAwareness.selected.volume}
                         max={100}
                         min={0}
                         step={1}
@@ -420,25 +710,12 @@ export const TabInfo: FC<{
                         notchTicksVisible={false}
                         showValue={true}
                         valueSuffix="%"
-                        disabled={!info?.capabilities?.conversationAwareness.selected}
+                        disabled={info.capabilities.conversationAwareness.readonly || !info.capabilities.conversationAwareness.selected.enabled}
                         notchLabels={[
-                          { label: t("capabilities_aap_conversation_awareness_volume_label_notchlabel_off"), notchIndex: 0, value: 0 },
+                          { label: t("capabilities_cmn_volume_reduction_off_label"), notchIndex: 0, value: 0 },
                           { label: "", notchIndex: 1, value: 100 }
                         ]}
-                        onChange={(n) => {
-                          setVolume(n);
-
-                          const key = "conversationAwarenessSpeaking";
-                          if (timeoutIds.current[key])
-                            clearTimeout(timeoutIds.current[key]);
-
-                          let starttime = Date.now();
-                          timeoutIds.current[key] = setTimeout(async () => {
-                            backend.logInfo("Settings: Elapsed", Date.now() - starttime, "Set volume to", n);
-                            await backend.saveSetting("conversation_awareness_volume", n);
-                            delete timeoutIds.current[key];
-                          }, 350)
-                        }} />
+                        onChange={(n) => { handleConversationAwarenessChange({ volume: n }, true); }} />
                     </PanelSectionRow>
                   </>
                 )}
@@ -447,6 +724,61 @@ export const TabInfo: FC<{
                   <PanelSectionRow>
                     <ToggleField checked={info?.capabilities?.personalizedVolume.selected} label={t("capabilities_aap_personalized_volume_label")}
                       onChange={(b) => { handleBooleanCapabilityChange("personalizedVolume", b); }} />
+                  </PanelSectionRow>
+                }
+
+                {info?.capabilities?.digitalCrown != null &&
+                  <PanelSectionRow>
+                    <DropdownItem
+                      layout="below"
+                      label={t("capabilities_aap_digital_crown_label")}
+                      menuLabel={t("capabilities_aap_digital_crown_label")}
+                      rgOptions={getDigitalCrownOptions()}
+                      selectedOption={info.capabilities.digitalCrown.selected}
+                      disabled={info.capabilities.digitalCrown.readonly}
+                      onChange={(option) => { handleDigitalCrownChange(option.data as number); }}
+                    />
+                  </PanelSectionRow>
+                }
+
+                {info?.capabilities?.pressAndHoldAirPodMode != null &&
+                  <>
+                    <PanelSectionRow>
+                      <DropdownItem
+                        layout="below"
+                        label={t("capabilities_aap_left_press_and_hold_label")}
+                        menuLabel={t("capabilities_aap_left_press_and_hold_label")}
+                        rgOptions={getPressAndHoldAirPodModeOptions(info.capabilities.pressAndHoldAirPodMode.options)}
+                        selectedOption={info.capabilities.pressAndHoldAirPodMode.selected.left}
+                        disabled={info.capabilities.pressAndHoldAirPodMode.readonly}
+                        onChange={(option) => { handlePressAndHoldAirPodModeChange("left", option.data as number); }}
+                      />
+                    </PanelSectionRow>
+                    <PanelSectionRow>
+                      <DropdownItem
+                        layout="below"
+                        label={t("capabilities_aap_right_press_and_hold_label")}
+                        menuLabel={t("capabilities_aap_right_press_and_hold_label")}
+                        rgOptions={getPressAndHoldAirPodModeOptions(info.capabilities.pressAndHoldAirPodMode.options)}
+                        selectedOption={info.capabilities.pressAndHoldAirPodMode.selected.right}
+                        disabled={info.capabilities.pressAndHoldAirPodMode.readonly}
+                        onChange={(option) => { handlePressAndHoldAirPodModeChange("right", option.data as number); }}
+                      />
+                    </PanelSectionRow>
+                  </>
+                }
+
+                {info?.capabilities?.pressAndHoldAirPodModeAnc != null &&
+                  <PanelSectionRow>
+                    <MultiSelect
+                      label={t("capabilities_aap_cycle_modes_label")}
+                      hint={t("capabilities_aap_cycle_modes_hint")}
+                      doNotApplyLabel={t("capabilities_aap_cycle_modes_do_not_change")}
+                      value={info.capabilities.pressAndHoldAirPodModeAnc.selected}
+                      options={getPressAndHoldAncOptions(info.capabilities.pressAndHoldAirPodModeAnc.options)}
+                      disabled={info.capabilities.pressAndHoldAirPodModeAnc.readonly}
+                      onChange={(value) => { handleNumberCapabilityCommit("pressAndHoldAirPodModeAnc", value); }}
+                    />
                   </PanelSectionRow>
                 }
 
@@ -476,25 +808,59 @@ export const TabInfo: FC<{
                   </PanelSectionRow>
                 }
 
-                {info?.capabilities?.pressAndHoldDuration != null &&
+                {info?.capabilities?.ancOffMode != null &&
                   <PanelSectionRow>
-                    <SliderField
-                      value={info?.capabilities?.pressAndHoldDuration.selected}
-                      max={2}
-                      min={0}
-                      step={1}
-                      label={t("capabilities_aap_press_and_hold_duration_label")}
-                      notchCount={3}
-                      notchTicksVisible={false}
-                      notchLabels={[
-                        { label: t("capabilities_aap_press_and_hold_duration_notchlabel_default"), notchIndex: 0, value: 0 },
-                        { label: t("capabilities_aap_press_and_hold_duration_notchlabel_shorter"), notchIndex: 1, value: 1 },
-                        { label: t("capabilities_aap_press_and_hold_duration_notchlabel_shortest"), notchIndex: 2, value: 2 }
-                      ]}
-                      onChange={(n) => { handleNumberCapabilityChange("pressAndHoldDuration", n); }} />
+                    <DropdownItem
+                      layout="below"
+                      label={t("capabilities_aap_anc_off_mode_label")}
+                      menuLabel={t("capabilities_aap_anc_off_mode_label")}
+                      rgOptions={getAncOffModeOptions()}
+                      selectedOption={info.capabilities.ancOffMode.selected}
+                      disabled={info.capabilities.ancOffMode.readonly}
+                      onChange={(option) => { handleAncOffModeChange(option.data as number); }}
+                    />
                   </PanelSectionRow>
                 }
 
+                {info?.capabilities?.customEq != null && (
+                  <>
+                    <PanelSectionRow>
+                      <ToggleField
+                        checked={info.capabilities.customEq.selected.enabled}
+                        disabled={info.capabilities.customEq.readonly}
+                        label={t("capabilities_aap_custom_eq_label")}
+                        onChange={(enabled) => {
+                          handleCustomEqChange({ enabled });
+                        }}
+                      />
+                    </PanelSectionRow>
+
+                    {(["low", "mid", "high"] as const).map((band) => (
+                      <PanelSectionRow key={band}>
+                        <SliderField
+                          value={info.capabilities.customEq?.selected[band] ?? 0}
+                          max={100}
+                          min={0}
+                          step={1}
+                          label={t(`capabilities_aap_custom_eq_${band}_label`)}
+                          notchCount={3}
+                          notchTicksVisible={false}
+                          notchLabels={[
+                            { label: "0", notchIndex: 0, value: 0 },
+                            { label: "50", notchIndex: 1, value: 50 },
+                            { label: "100", notchIndex: 2, value: 100 }
+                          ]}
+                          showValue={true}
+                          valueSuffix="%"
+                          disabled={!info.capabilities.customEq?.selected.enabled || info.capabilities.customEq?.readonly}
+                          onChange={(value) => {
+                            handleCustomEqChange({ [band]: value }, true);
+                          }}
+                        />
+                      </PanelSectionRow>
+                    ))}
+                  </>
+                )}
 
                 {info?.capabilities?.pressSpeed != null &&
                   <PanelSectionRow>
@@ -515,23 +881,22 @@ export const TabInfo: FC<{
                   </PanelSectionRow>
                 }
 
-                {info?.capabilities?.toneVolume != null &&
+                {info?.capabilities?.pressAndHoldDuration != null &&
                   <PanelSectionRow>
                     <SliderField
-                      value={info?.capabilities?.toneVolume.selected}
-                      max={125}
-                      min={15}
+                      value={info?.capabilities?.pressAndHoldDuration.selected}
+                      max={2}
+                      min={0}
                       step={1}
-                      label={t("capabilities_aap_tone_volume_label")}
-                      notchCount={2}
+                      label={t("capabilities_aap_press_and_hold_duration_label")}
+                      notchCount={3}
                       notchTicksVisible={false}
-                      showValue={true}
-                      valueSuffix="%"
                       notchLabels={[
-                        { label: "15", notchIndex: 0, value: 15 },
-                        { label: "125", notchIndex: 1, value: 100 }
+                        { label: t("capabilities_aap_press_and_hold_duration_notchlabel_default"), notchIndex: 0, value: 0 },
+                        { label: t("capabilities_aap_press_and_hold_duration_notchlabel_shorter"), notchIndex: 1, value: 1 },
+                        { label: t("capabilities_aap_press_and_hold_duration_notchlabel_shortest"), notchIndex: 2, value: 2 }
                       ]}
-                      onChange={(n) => { handleNumberCapabilityChange("toneVolume", n); }} />
+                      onChange={(n) => { handleNumberCapabilityChange("pressAndHoldDuration", n); }} />
                   </PanelSectionRow>
                 }
 
@@ -597,6 +962,48 @@ export const TabInfo: FC<{
                     </PanelSectionRow>
                   </>
                 )}
+
+                {info?.capabilities?.toneVolume != null &&
+                  <PanelSectionRow>
+                    <SliderField
+                      value={info?.capabilities?.toneVolume.selected}
+                      max={125}
+                      min={15}
+                      step={1}
+                      label={t("capabilities_aap_tone_volume_label")}
+                      notchCount={2}
+                      notchTicksVisible={false}
+                      showValue={true}
+                      valueSuffix="%"
+                      notchLabels={[
+                        { label: "15", notchIndex: 0, value: 15 },
+                        { label: "125", notchIndex: 1, value: 100 }
+                      ]}
+                      onChange={(n) => { handleNumberCapabilityChange("toneVolume", n); }} />
+                  </PanelSectionRow>
+                }
+
+                {info?.capabilities?.sleepDetection != null &&
+                  <PanelSectionRow>
+                    <ToggleField
+                      checked={info.capabilities.sleepDetection.selected}
+                      disabled={info.capabilities.sleepDetection.readonly}
+                      label={t("capabilities_aap_sleep_detection_label")}
+                      onChange={(enabled) => { handleBooleanCapabilityChange("sleepDetection", enabled); }}
+                    />
+                  </PanelSectionRow>
+                }
+
+                {info?.capabilities?.optimizedCharge != null &&
+                  <PanelSectionRow>
+                    <ToggleField
+                      checked={info.capabilities.optimizedCharge.selected}
+                      disabled={info.capabilities.optimizedCharge.readonly}
+                      label={t("capabilities_aap_optimized_charge_label")}
+                      onChange={(enabled) => { handleBooleanCapabilityChange("optimizedCharge", enabled); }}
+                    />
+                  </PanelSectionRow>
+                }
               </>
             )}
           </PanelSection>

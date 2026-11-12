@@ -1,0 +1,25 @@
+{
+    "translation": {
+        "capabilities_aap_left_press_and_hold_label": "Vasemman pitkä painallus",
+        "capabilities_aap_right_press_and_hold_label": "Oikean pitkä painallus",
+        "capabilities_aap_press_and_hold_voice_assistant": "Ääniavustaja",
+        "capabilities_aap_anc_off_mode_label": "Kuuntelutila pois",
+        "capabilities_aap_anc_off_mode_enabled": "Käytössä",
+        "capabilities_aap_anc_off_mode_disabled": "Pois käytöstä",
+        "capabilities_aap_press_and_hold_volume_down": "Vähennä äänenvoimakkuutta",
+        "capabilities_aap_press_and_hold_volume_up": "Lisää äänenvoimakkuutta",
+        "capabilities_aap_digital_crown_label": "Digital Crown",
+        "capabilities_aap_digital_crown_back_to_front": "Takaa eteen",
+        "capabilities_aap_digital_crown_front_to_back": "Edestä taakse",
+        "capabilities_aap_cycle_modes_label": "Melunhallinta kuulokkeista",
+        "capabilities_aap_cycle_modes_do_not_change": "Älä muuta",
+        "capabilities_aap_cycle_modes_hint": "Valitse vähintään kaksi tilaa tai poista kaikki valinnat, jotta asetus säilyy ennallaan.",
+        "capabilities_aap_optimized_charge_label": "Optimoitu latausraja",
+        "capabilities_aap_conversation_awareness_volume_label": "Laske äänenvoimakkuutta puhuessa",
+        "capabilities_cmn_ear_detection_pause_media_label": "Keskeytä, kun kuuloke poistetaan korvalta",
+        "capabilities_cmn_ear_detection_lower_volume_label": "Laske äänenvoimakkuutta, kun kuuloke poistetaan korvalta",
+        "capabilities_cmn_ear_detection_switch_to_speaker_label": "Vaihda kaiuttimeen, kun kuulokkeet poistetaan kokonaan",
+        "capabilities_cmn_volume_reduction_off_label": "Pois",
+        "capabilities_aap_sleep_detection_label": "Tauko nukahtaessa"
+    }
+}

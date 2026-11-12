@@ -1,0 +1,25 @@
+{
+    "translation": {
+        "capabilities_aap_left_press_and_hold_label": "Kreisās puses turēšana nospiestā stāvoklī",
+        "capabilities_aap_right_press_and_hold_label": "Labās puses turēšana nospiestā stāvoklī",
+        "capabilities_aap_press_and_hold_voice_assistant": "Balss asistents",
+        "capabilities_aap_anc_off_mode_label": "Izslēgts klausīšanās režīms",
+        "capabilities_aap_anc_off_mode_enabled": "Ieslēgts",
+        "capabilities_aap_anc_off_mode_disabled": "Izslēgts",
+        "capabilities_aap_press_and_hold_volume_down": "Samazināt skaļumu",
+        "capabilities_aap_press_and_hold_volume_up": "Palielināt skaļumu",
+        "capabilities_aap_digital_crown_label": "Digital Crown",
+        "capabilities_aap_digital_crown_back_to_front": "No aizmugures uz priekšu",
+        "capabilities_aap_digital_crown_front_to_back": "No priekšpuses uz aizmuguri",
+        "capabilities_aap_cycle_modes_label": "Trokšņu kontrole no austiņām",
+        "capabilities_aap_cycle_modes_do_not_change": "Nemainīt",
+        "capabilities_aap_cycle_modes_hint": "Atlasiet vismaz divus režīmus vai noņemiet visas atzīmes, lai iestatījums netiktu mainīts.",
+        "capabilities_aap_optimized_charge_label": "Optimizēts uzlādes ierobežojums",
+        "capabilities_aap_conversation_awareness_volume_label": "Samazināt skaļumu runāšanas laikā",
+        "capabilities_cmn_ear_detection_pause_media_label": "Pauzēt, noņemot no vienas auss",
+        "capabilities_cmn_ear_detection_lower_volume_label": "Samazināt skaļumu, noņemot no vienas auss",
+        "capabilities_cmn_ear_detection_switch_to_speaker_label": "Pilnībā noņemot, pārslēgt uz skaļruni",
+        "capabilities_cmn_volume_reduction_off_label": "Izsl.",
+        "capabilities_aap_sleep_detection_label": "Pause When Asleep"
+    }
+}

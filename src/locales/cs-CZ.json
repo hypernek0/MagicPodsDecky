@@ -1,0 +1,25 @@
+{
+    "translation": {
+        "capabilities_aap_left_press_and_hold_label": "Stisknutí a podržení vlevo",
+        "capabilities_aap_right_press_and_hold_label": "Stisknutí a podržení vpravo",
+        "capabilities_aap_press_and_hold_voice_assistant": "Hlasový asistent",
+        "capabilities_aap_anc_off_mode_label": "Režim poslechu Vypnuto",
+        "capabilities_aap_anc_off_mode_enabled": "Zapnuto",
+        "capabilities_aap_anc_off_mode_disabled": "Vypnuto",
+        "capabilities_aap_press_and_hold_volume_down": "Snížit hlasitost",
+        "capabilities_aap_press_and_hold_volume_up": "Zvýšit hlasitost",
+        "capabilities_aap_digital_crown_label": "Digital Crown",
+        "capabilities_aap_digital_crown_back_to_front": "Zezadu dopředu",
+        "capabilities_aap_digital_crown_front_to_back": "Zepředu dozadu",
+        "capabilities_aap_cycle_modes_label": "Ovládání hluku ze sluchátek",
+        "capabilities_aap_cycle_modes_do_not_change": "Neměnit",
+        "capabilities_aap_cycle_modes_hint": "Vyberte alespoň dva režimy nebo zrušte výběr všech, aby nastavení zůstalo beze změny.",
+        "capabilities_aap_optimized_charge_label": "Optimalizovaný limit nabíjení",
+        "capabilities_aap_conversation_awareness_volume_label": "Snížit hlasitost při mluvení",
+        "capabilities_cmn_ear_detection_pause_media_label": "Pozastavit při sejmutí z jednoho ucha",
+        "capabilities_cmn_ear_detection_lower_volume_label": "Snížit hlasitost při sejmutí z jednoho ucha",
+        "capabilities_cmn_ear_detection_switch_to_speaker_label": "Přepnout na reproduktor při úplném sejmutí",
+        "capabilities_cmn_volume_reduction_off_label": "Vyp.",
+        "capabilities_aap_sleep_detection_label": "Pozastavit při usínání"
+    }
+}

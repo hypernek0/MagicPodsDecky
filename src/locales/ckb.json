@@ -1,7 +1,34 @@
 {
     "translation": {
+        "capabilities_aap_left_press_and_hold_label": "پەستان و ڕاگرتنی چەپ",
+        "capabilities_aap_right_press_and_hold_label": "پەستان و ڕاگرتنی ڕاست",
+        "capabilities_aap_press_and_hold_voice_assistant": "یاریدەدەری دەنگی",
+        "capabilities_aap_anc_off_mode_label": "دۆخی گوێگرتنی کوژاوە",
+        "capabilities_aap_anc_off_mode_enabled": "چالاک",
+        "capabilities_aap_anc_off_mode_disabled": "ناچالاک",
+        "capabilities_aap_press_and_hold_volume_down": "کەمکردنەوەی دەنگ",
+        "capabilities_aap_press_and_hold_volume_up": "زیادکردنی دەنگ",
+        "capabilities_aap_digital_crown_label": "Digital Crown",
+        "capabilities_aap_digital_crown_back_to_front": "لە دواوە بۆ پێشەوە",
+        "capabilities_aap_digital_crown_front_to_back": "لە پێشەوە بۆ دواوە",
+        "capabilities_aap_cycle_modes_label": "کۆنترۆڵی دەنگ لە سەرگۆشەکانەوە",
+        "capabilities_aap_cycle_modes_do_not_change": "گۆڕانکاری مەکە",
+        "capabilities_aap_cycle_modes_hint": "لانیکەم دوو دۆخ هەڵبژێرە، یان هەموویان لاببە بۆ ئەوەی ڕێکخستنەکە نەگۆڕدرێت.",
+        "capabilities_aap_custom_eq_label": "ئیکوالایزەر",
+        "capabilities_aap_custom_eq_low_label": "ئیکوالایزەر: نزم",
+        "capabilities_aap_custom_eq_mid_label": "ئیکوالایزەر: ناوەند",
+        "capabilities_aap_custom_eq_high_label": "ئیکوالایزەر: بەرز",
+        "capabilities_aap_optimized_charge_label": "Optimized Charge Limit",
+        "capabilities_aap_conversation_awareness_volume_label": "کەمکردنەوەی دەنگ لە کاتی قسەکردن",
+        "capabilities_cmn_ear_detection_pause_media_label": "وەستاندن لە کاتی لابردن لە یەک گوێ",
+        "capabilities_cmn_ear_detection_lower_volume_label": "کەمکردنەوەی دەنگ لە کاتی لابردن لە یەک گوێ",
+        "capabilities_cmn_ear_detection_switch_to_speaker_label": "گواستنەوە بۆ بڵندگۆ لە کاتی لابردنی تەواو",
+        "capabilities_cmn_volume_reduction_off_label": "کوژاوە",
+        "capabilities_aap_sleep_detection_label": "Pause When Asleep",
         "battery_left": "چەپ",
         "battery_right": "ڕاست",
-        "battery_case": "کەیس"
+        "battery_case": "کەیس",
+        "settings_auto_select_tab_label": "هەڵبژاردنی خۆکارانەی تاب",
+        "settings_auto_select_tab_description": "لە کاتی کردنەوەی پڵەگینەکە، ئەگەر گوێگرەکان پەیوەست نەبن بڕۆ بۆ تابی «گوێگرەکان»."
     }
 }

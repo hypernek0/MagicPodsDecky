@@ -37,6 +37,8 @@ class Settings():
             return branch.get(key, False)
         elif key == "fix_disconnects":
             return branch.get(key, False)
+        elif key == "auto_select_tab":
+            return branch.get(key, False)
         elif key == "mic_qam_l5_toggle":
             return branch.get(key, False)
         elif key == "allow_anc_mode_off":
@@ -52,6 +54,7 @@ class Settings():
         elif key == "log_level":
             return branch.get(key, 50)
         elif key == "conversation_awareness_volume":
+            # Deprecated: conversation awareness volume is now managed by MagicPodsCore.
             return branch.get(key, 70)
         elif key == "header_battery_icon":
             return branch.get(key, True)
