@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 4bfddd4..53e693a 100644
+index 522095b..9c9992f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -95,6 +95,8 @@ add_executable(magicpodscore
+@@ -139,6 +139,8 @@ add_executable(magicpodscore
      src/device/capabilities/pbp/PixelBudsAncCapability.cpp
      src/device/capabilities/pbp/PixelBudsBatteryCapability.cpp
  
@@ -10,8 +10,8 @@ index 4bfddd4..53e693a 100644
 +
      src/device/capabilities/bhf/BhfBatteryCapability.cpp
      src/device/capabilities/cmn/CmnBluetoothCodecCapability.cpp
- 
-@@ -103,6 +105,7 @@ add_executable(magicpodscore
+     src/device/capabilities/cmn/CmnSendHexCapability.cpp
+@@ -148,6 +150,7 @@ add_executable(magicpodscore
      src/device/GalaxyBudsDevice.cpp
      src/device/PixelBudsDevice.cpp
      src/device/BhfDevice.cpp
@@ -20,7 +20,7 @@ index 4bfddd4..53e693a 100644
      src/device/Device.cpp
  
 diff --git a/src/DevicesInfoFetcher.cpp b/src/DevicesInfoFetcher.cpp
-index f89e62f..9dcaf5c 100644
+index a75595f..cece68f 100644
 --- a/src/DevicesInfoFetcher.cpp
 +++ b/src/DevicesInfoFetcher.cpp
 @@ -14,6 +14,8 @@
@@ -32,13 +32,13 @@ index f89e62f..9dcaf5c 100644
  
  #include <regex>
  #include <iostream>
-@@ -186,6 +188,15 @@ DevicesInfoFetcher::~DevicesInfoFetcher()
+@@ -207,6 +209,15 @@ DevicesInfoFetcher::~DevicesInfoFetcher()
              return newDevice;
          }
  
 +        else if (NothingHelper::IsNothingDevice(deviceInfo->GetName(), deviceInfo->GetUuids()))
 +        {
-+            auto newDevice = NothingDevice::Create(deviceInfo, _audioClient, _settingsService);
++            auto newDevice = NothingDevice::Create(deviceInfo, _audioClient, _settingsService, _mediaController);
 +            newDevice->GetConnectedPropertyChangedEvent().Subscribe([this](size_t listenerId, bool newValue) {
 +                TrySelectNewActiveDevice();
 +            });
@@ -50,10 +50,10 @@ index f89e62f..9dcaf5c 100644
                   ((keyPair = GalaxyBudsHelper::SearchModelColor(deviceInfo->GetUuids(), deviceInfo->GetName())).first != GalaxyBudsModelIds::Unknown))
 diff --git a/src/device/NothingDevice.cpp b/src/device/NothingDevice.cpp
 new file mode 100644
-index 0000000..45eba03
+index 0000000..c112ba2
 --- /dev/null
 +++ b/src/device/NothingDevice.cpp
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,46 @@
 +// MagicPodsCore: https://github.com/steam3d/MagicPodsCore
 +// License: GPL-3.0
 +
@@ -73,17 +73,18 @@ index 0000000..45eba03
 +        }
 +    }
 +
-+    NothingDevice::NothingDevice(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService)
-+        : Device(deviceInfo, audioClient, settingsService) {}
++    NothingDevice::NothingDevice(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService, std::shared_ptr<MediaController> mediaController)
++        : Device(deviceInfo, audioClient, settingsService, mediaController) {}
 +
 +    void NothingDevice::SendPacket(NothingCmd cmd, NothingDir dir, const std::vector<unsigned char> &payload)
 +    {
 +        _client->SendData(_packet.Encode(cmd, dir, payload));
 +    }
 +
-+    std::shared_ptr<NothingDevice> NothingDevice::Create(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService)
++    std::shared_ptr<NothingDevice> NothingDevice::Create(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService, std::shared_ptr<MediaController> mediaController)
 +    {
-+        auto device = std::make_shared<NothingDevice>(deviceInfo, audioClient, settingsService);
++        // Shared from the start, so Init() can already hand a weak reference to the deferred client restart.
++        auto device = std::make_shared<NothingDevice>(deviceInfo, audioClient, settingsService, mediaController);
 +
 +        device->capabilities.push_back(std::make_unique<CmnBluetoothCodecCapability>(*device));
 +        device->capabilities.push_back(std::make_unique<NothingBatteryCapability>(*device));
@@ -101,7 +102,7 @@ index 0000000..45eba03
 +}
 diff --git a/src/device/NothingDevice.h b/src/device/NothingDevice.h
 new file mode 100644
-index 0000000..505c0ca
+index 0000000..31b758d
 --- /dev/null
 +++ b/src/device/NothingDevice.h
 @@ -0,0 +1,31 @@
@@ -124,7 +125,7 @@ index 0000000..505c0ca
 +        void OnResponseDataReceived(const std::vector<unsigned char> &data) override;
 +
 +    public:
-+        explicit NothingDevice(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService);
++        explicit NothingDevice(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService, std::shared_ptr<MediaController> mediaController);
 +
 +        Event<NothingResponseData> &GetResponseDataRecived()
 +        {
@@ -133,7 +134,7 @@ index 0000000..505c0ca
 +
 +        void SendPacket(NothingCmd cmd, NothingDir dir, const std::vector<unsigned char> &payload);
 +
-+        static std::shared_ptr<NothingDevice> Create(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService);
++        static std::shared_ptr<NothingDevice> Create(std::shared_ptr<DBusDeviceInfo> deviceInfo, std::shared_ptr<PulseAudioClient> audioClient, std::shared_ptr<SettingsService> settingsService, std::shared_ptr<MediaController> mediaController);
 +    };
 +}
 diff --git a/src/device/capabilities/nothing/NothingCapabilities.cpp b/src/device/capabilities/nothing/NothingCapabilities.cpp
